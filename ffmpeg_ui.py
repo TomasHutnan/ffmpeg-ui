@@ -68,7 +68,7 @@ class ui:
                                                    ("All Files", "*.*")])
 
         # If the file doesn't end with an extension, give it ".mp4"
-        if "." not in self.dir:
+        if self.dir and "." not in self.dir:
             self.dir += ".mp4"
 
         self.output.set(self.dir)
@@ -90,7 +90,9 @@ class app:
     def __init__(self, ui):
         self.ui = ui
         self.ui.trim_button.config(command=self.trim)
-        self.ui.status.set("idle")
+        self.ui.status.set("Running operations: 0")
+
+        executor.submit(self.command_executor)
 
     def trim(self):
         self.ui.status.set("processing")
@@ -103,18 +105,16 @@ class app:
                                  int(self.ui.timestamp[i][2].get() if self.ui.timestamp[i][2].get() != "" else "0") +
                                  float("0."+self.ui.timestamp[i][-1].get()))
 
-        # Abort if START > END
-        if self.str_time[0] >= self.str_time[1]:
-            self.ui.status.set("invalid timestamp")
-            return
-
         # Abort if input file or output filename is missing
-        elif self.ui.input.get() == "" or self.ui.output.get() == "":
+        if self.ui.input.get() == "" or self.ui.output.get() == "":
             self.ui.status.set("missing input/output")
             return
 
         if self.str_time[1] == 0:  # Set END timestamp to "" if it's 0
             self.to = ""
+        elif self.str_time[0] >= self.str_time[1]:  # Abort if START >= END
+            self.ui.status.set("invalid timestamp")
+            return
         else:
             self.to = " -to "+str(self.str_time[1])
 
@@ -123,29 +123,34 @@ class app:
                                                                                                          end=self.to,
                                                                                                          inpt=self.ui.input.get(),
                                                                                                          outp=self.ui.output.get()))
-        print(self.ffmpeg_command)
-        commands.append(self.ffmpeg_command)
+        self.commands.append(self.ffmpeg_command)
 
+    def run_ffmpeg(self, command):  # Runs a given windows shell command
+        self.t1 = time.perf_counter()
+        self.running_operations.add(self.t1)
 
-def run_ffmpeg(command):  # Runs a given windows shell command
-    t1 = time.perf_counter()
-    os.system(command)
-    t2 = time.perf_counter()
-    print("/n")
-    print(f"Command: {command}")
-    print(f"Completed in: {datetime.timedelta(seconds=t2-t1)}")
+        self.ui.status.set(f"Running operations: {len(self.running_operations)}")
 
+        os.system(command)
+        self.t2 = time.perf_counter()
+        print(f"\nCommand: '{command}'")
+        print(f"Completed in: {datetime.timedelta(seconds=self.t2-self.t1)}\n")
+        self.running_operations.discard(self.t1)
 
-def command_executor():
-    while True:
-        while commands:
-            for _ in range(len(commands)):
-                executor.submit(run_ffmpeg, commands.pop())
+        self.ui.status.set(f"Running operations: {len(self.running_operations)}")
+
+    def command_executor(self):
+        self.commands = []
+        self.running_operations = set()
+        self.prev_len = 0
+        while True:
+            while self.commands:
+                for _ in range(len(self.commands)):
+                    self.cmd = self.commands.pop()
+                    executor.submit(self.run_ffmpeg, self.cmd)
 
 
 if __name__ == "__main__":
-    commands = []
     executor = concurrent.futures.ThreadPoolExecutor()
-    executor.submit(command_executor)
     app = app(ui())
     app.ui.root.mainloop()

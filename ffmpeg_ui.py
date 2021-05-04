@@ -12,17 +12,23 @@ class ui:
     def __init__(self):
         self.root = tk.Tk()
 
+        self.input_frame = tk.Frame(self.root)
+        self.input_frame.grid(row=0, column=0)
+
+        self.cur_cuts = tk.Label(self.root, text="")
+        self.cur_cuts.grid(row=0, column=1)
+
         # Construct input label, entry and button
-        tk.Label(text="Input:").grid(row=0, column=0)
+        tk.Label(self.input_frame, text="Input:").grid(row=0, column=0)
         self.input = tk.StringVar()
-        tk.Entry(textvariable=self.input).grid(row=0, column=1)
-        tk.Button(text="Choose input", command=lambda *args: self.choose_file()).grid(row=0, column=2)
+        tk.Entry(self.input_frame, textvariable=self.input).grid(row=0, column=1)
+        tk.Button(self.input_frame, text="Choose input", command=lambda *args: self.choose_file()).grid(row=0, column=2)
 
         # Construct output label, entry and button
-        tk.Label(text="Output:").grid(row=1, column=0)
+        tk.Label(self.input_frame, text="Output:").grid(row=1, column=0)
         self.output = tk.StringVar()
-        tk.Entry(textvariable=self.output).grid(row=1, column=1)
-        tk.Button(text="Choose output", command=lambda *args: self.save_file()).grid(row=1, column=2)
+        tk.Entry(self.input_frame, textvariable=self.output).grid(row=1, column=1)
+        tk.Button(self.input_frame, text="Choose output", command=lambda *args: self.save_file()).grid(row=1, column=2)
 
         # Tuple containing 2 tuples with 4 tkinter StringVar variables for START and END timestamps
         self.timestamp = tuple(tuple(tk.StringVar() for _ in range(4)) for _ in range(2))
@@ -37,19 +43,19 @@ class ui:
             self.timestamp[row][3].trace("w", functools.partial(self.int_limit, self.timestamp[row][3], 999))
 
         # Construct START and END timestamp ui
-        tk.Label(text="Start - End (H:M:S.MS)").grid(row=3, column=0)
+        tk.Label(self.input_frame, text="Start - End (H:M:S.MS)").grid(row=3, column=0)
 
         for row in range(2):
             for column in range(4):
-                tk.Entry(textvariable=self.timestamp[row][column]).grid(row=4+row, column=column)
+                tk.Entry(self.input_frame, textvariable=self.timestamp[row][column]).grid(row=4+row, column=column)
 
         # Construct button to begin video trimming
-        self.trim_button = tk.Button(text="Trim")
+        self.trim_button = tk.Button(self.input_frame, text="Trim")
         self.trim_button.grid(row=6, column=0)
 
         # Construct STATUS label
         self.status = tk.StringVar()
-        tk.Label(textvariable=self.status).grid(row=6, column=1)
+        tk.Label(self.input_frame, textvariable=self.status).grid(row=6, column=1)
 
     def choose_file(self):  # Input file dialog
         self.dir = fd.askopenfilename(filetypes=[("All Files", "*.*"),
@@ -130,17 +136,16 @@ def run_ffmpeg(command):  # Runs a given windows shell command
     print(f"Completed in: {datetime.timedelta(seconds=t2-t1)}")
 
 
-def infinite_run():
+def command_executor():
     while True:
-        while not commands:
-            time.sleep(1)
-        for _ in range(len(commands)):
-            executor.submit(run_ffmpeg, commands.pop())
+        while commands:
+            for _ in range(len(commands)):
+                executor.submit(run_ffmpeg, commands.pop())
 
 
 if __name__ == "__main__":
     commands = []
     executor = concurrent.futures.ThreadPoolExecutor()
-    executor.submit(infinite_run)
+    executor.submit(command_executor)
     app = app(ui())
     app.ui.root.mainloop()

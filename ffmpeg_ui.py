@@ -5,6 +5,7 @@ import time
 import datetime
 import os
 import re
+import functools
 
 
 class ui:
@@ -26,17 +27,14 @@ class ui:
         # Tuple containing 2 tuples with 4 tkinter StringVar variables for START and END timestamps
         self.timestamp = tuple(tuple(tk.StringVar() for _ in range(4)) for _ in range(2))
 
-        # Cloudn't do this section with for loops for an unknown reason
         # Trace every change in timestamp variables
-        self.timestamp[0][0].trace("w", lambda *args: self.only_numeric(var=self.timestamp[0][0]))
-        self.timestamp[0][1].trace("w", lambda *args: self.int_limit(var=self.timestamp[0][1], limit=59))
-        self.timestamp[0][2].trace("w", lambda *args: self.int_limit(var=self.timestamp[0][2], limit=59))
-        self.timestamp[0][3].trace("w", lambda *args: self.int_limit(var=self.timestamp[0][3], limit=999))
-
-        self.timestamp[1][0].trace("w", lambda *args: self.only_numeric(var=self.timestamp[1][0]))
-        self.timestamp[1][1].trace("w", lambda *args: self.int_limit(var=self.timestamp[1][1], limit=59))
-        self.timestamp[1][2].trace("w", lambda *args: self.int_limit(var=self.timestamp[1][2], limit=59))
-        self.timestamp[1][3].trace("w", lambda *args: self.int_limit(var=self.timestamp[1][3], limit=999))
+        for row in range(2):
+            self.timestamp[row][0].trace("w", functools.partial(self.only_numeric, self.timestamp[row][0]))
+        for row in range(2):
+            for column in range(1, 3):
+                self.timestamp[row][column].trace("w", functools.partial(self.int_limit, self.timestamp[row][column], 59))
+        for row in range(2):
+            self.timestamp[row][3].trace("w", functools.partial(self.int_limit, self.timestamp[row][3], 999))
 
         # Construct START and END timestamp ui
         tk.Label(text="Start - End (H:M:S.MS)").grid(row=3, column=0)
@@ -69,7 +67,7 @@ class ui:
 
         self.output.set(self.dir)
 
-    def int_limit(self, var, limit):  # Ensure, that value is below or equal to given limit
+    def int_limit(self, var, limit, *args):  # Ensure, that value is below or equal to given limit
         self.only_numeric(var)
 
         if var.get() == "":
@@ -78,7 +76,7 @@ class ui:
         elif int(var.get()) > limit:
             var.set(limit)
 
-    def only_numeric(self, var):  # Ensure, that value stays numeric
+    def only_numeric(self, var, *args):  # Ensure, that value stays numeric
         var.set(re.sub('[^0-9]', '', var.get()).lstrip("0"))
 
 

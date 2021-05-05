@@ -58,13 +58,13 @@ class ui:
         tk.Label(self.input_frame, textvariable=self.status).grid(row=6, column=1)
 
     def choose_file(self):  # Input file dialog
-        self.dir = fd.askopenfilename(filetypes=[("All Files", "*.*"),
-                                                 ("MP4", "*.mp4")])
+        self.dir = fd.askopenfilename(filetypes=[("Video File", ["*.mov", "*.mp4", "*.m4a", "*.3gp", "*.3g2", "*.mj2"]),
+                                                 ("All Files", "*.*")])
         self.input.set(self.dir)
 
     def save_file(self):  # Output file dialog
         self.dir = fd.asksaveasfilename(initialfile="output.mp4",
-                                        filetypes=[("MP4", "*.mp4"),
+                                        filetypes=[("Video File", ["*.mov", "*.mp4", "*.m4a", "*.3gp", "*.3g2", "*.mj2"]),
                                                    ("All Files", "*.*")])
 
         # If the file doesn't end with an extension, give it ".mp4"
@@ -118,11 +118,13 @@ class app:
         else:
             self.to = " -to "+str(self.str_time[1])
 
+        if self.str_time[0] > seek_treshold:
+            self.start = [" -ss "+str(self.str_time[0]-seek_treshold), " -ss "+str(seek_treshold)]
+        else:
+            self.start = ["", " -ss "+str(self.str_time[0])]
+
         # Compile the ffmpeg command
-        self.ffmpeg_command = ('ffmpeg -ss {start}{end} -i "{inpt}" -c:v copy -c:a copy "{outp}"'.format(start=self.str_time[0],
-                                                                                                         end=self.to,
-                                                                                                         inpt=self.ui.input.get(),
-                                                                                                         outp=self.ui.output.get()))
+        self.ffmpeg_command = (f'ffmpeg {self.start[0]}{self.to} -i "{self.ui.input.get()}"{self.start[1]} -c:v copy -c:a copy "{self.ui.output.get()}"')
         self.commands.append(self.ffmpeg_command)
 
     def run_ffmpeg(self, command):  # Runs a given windows shell command
@@ -142,7 +144,6 @@ class app:
     def command_executor(self):
         self.commands = []
         self.running_operations = set()
-        self.prev_len = 0
         while True:
             while self.commands:
                 for _ in range(len(self.commands)):
@@ -151,6 +152,7 @@ class app:
 
 
 if __name__ == "__main__":
+    seek_treshold = 30
     executor = concurrent.futures.ThreadPoolExecutor()
     app = app(ui())
     app.ui.root.mainloop()

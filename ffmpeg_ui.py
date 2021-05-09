@@ -6,6 +6,7 @@ import datetime
 import os
 import re
 import functools
+import subprocess
 
 
 class ui:
@@ -23,6 +24,8 @@ class ui:
         self.input = tk.StringVar()
         tk.Entry(self.input_frame, textvariable=self.input).grid(row=0, column=1)
         tk.Button(self.input_frame, text="Choose input", command=lambda *args: self.choose_file()).grid(row=0, column=2)
+        self.extract_video = tk.BooleanVar()
+        tk.Checkbutton(self.input_frame, text="Extract with youtube-dl", variable=self.extract_video).grid(row=0, column=3)
 
         # Construct output label, entry and button
         tk.Label(self.input_frame, text="Output:").grid(row=1, column=0)
@@ -123,8 +126,13 @@ class app:
         else:
             self.start = ["", " -ss "+str(self.str_time[0])]
 
+        if self.ui.extract_video.get():
+            self.input_video = subprocess.check_output(str("youtube-dl -g "+self.ui.input.get())).strip().decode("utf-8")
+        else:
+            self.input_video = self.ui.input.get()
+
         # Compile the ffmpeg command
-        self.ffmpeg_command = (f'ffmpeg {self.start[0]}{self.to} -i "{self.ui.input.get()}"{self.start[1]} -c:v copy -c:a copy "{self.ui.output.get()}"')
+        self.ffmpeg_command = (f'ffmpeg {self.start[0]}{self.to} -i "{self.input_video}"{self.start[1]} -c:v copy -c:a copy "{self.ui.output.get()}"')
         self.commands.append(self.ffmpeg_command)
 
     def run_ffmpeg(self, command):  # Runs a given windows shell command

@@ -131,8 +131,9 @@ class app:
         else:
             self.input_video = self.ui.input.get()
 
+        self.quote = '"'  # remove quotes if copying file path from file explorer
         # Compile the ffmpeg command
-        self.ffmpeg_command = (f'ffmpeg {self.start[0]}{self.to} -i "{self.input_video}"{self.start[1]} -c:v copy -c:a copy "{self.ui.output.get()}"')
+        self.ffmpeg_command = (f'ffmpeg {self.start[0]}{self.to} -i "{self.input_video.strip(self.quote)}"{self.start[1]} -c:v copy -c:a copy "{self.ui.output.get().strip(self.quote)}"')
         self.commands.append(self.ffmpeg_command)
 
     def run_ffmpeg(self, command):  # Runs a given windows shell command
